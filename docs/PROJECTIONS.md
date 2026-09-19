@@ -23,13 +23,25 @@ recomputes the expected bytes and exits non-zero for missing or hand-edited
 generated content. Output ordering is identity-sorted and contains no clock,
 randomness, or run-specific metadata.
 
-The current implementation is deliberately classified as a host-boundary
-projection adapter in the repository manifest. Commons pressure
-`MNCS-LANG-6643CDECCFEC` records the reusable missing generic surface for
-dynamic structured registry projection; this adapter is not permission to
-hide that pressure behind new application semantics. When the owning
-language/stdlib/runtime capability is repaired, the projection can move into
-MNCS while preserving the same input contract and byte-level tests.
+The current implementation remains a temporary host semantic implementation
+of a family-specific policy, with filesystem publication at its external
+boundary. It is classified as a migration shadow/workload in the repository
+manifest, not as a generic `structured-document` implementation. The family
+projector is deliberately not the owner of language status, Commons pressure
+lifecycle, architecture, or roadmap policy.
+
+The workload currently exposes the document-domain pressure
+`MNCS-LANG-BC105FDA1446`: source-preserving regions and spans are only partly
+native. Structured Markdown nodes and deterministic rendering remain later
+slices of that document workload. It is intentionally separate from Commons'
+dynamic registry projection pressure `MNCS-LANG-6643CDECCFEC`; that pressure
+is not a generic document contract. Once a reusable document capability is
+callable and tested in MNCS, this workload will consume it without changing
+its family-specific policy.
+
+The current callable slice is `mncs.doc.region/1`. It receives marker spans
+from the host parser and validates the lossless replacement envelope. This is
+deliberately narrower than the eventual Markdown AST/rendering surface.
 
 Typical checks are:
 

@@ -24,7 +24,15 @@ Machine-native structured document and rich-text infrastructure for MNCS.
 
 ## Projection contract
 
-Deterministic README, RFC-index, and roadmap projections are implemented in
+Deterministic README, RFC-index, and roadmap projections are implemented as a
+family-specific dogfood workload in
 [`tools/project.py`](tools/project.py) and described in
 [`docs/PROJECTIONS.md`](docs/PROJECTIONS.md). Generated regions are bounded
-and checkable; the surrounding explanation remains human-authored.
+and checkable; the surrounding explanation remains human-authored. This does
+not yet provide the reusable `structured-document` contract from RFC 0001.
+
+The first reusable vertical slice is `native/mncs/doc/region.mncs`: a bounded
+source-span decision function for lossless generated-region replacement. The
+host projector still finds marker bytes and publishes files; the region
+ordering and replacement boundaries are document semantics owned by
+`mncs-doc`.

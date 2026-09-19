@@ -4,8 +4,9 @@
 The input context is a read-only projection from the owning repositories.  RFC
 bodies remain the durable design source; this module only derives a stable
 index from their identity/status headers.  The host implementation is an
-explicit projection boundary while the generic structured-document pressure
-in Commons remains unresolved.
+explicit filesystem/publication boundary while the document-domain pressure
+(`MNCS-LANG-BC105FDA1446`) remains the migration driver for reusable
+structured-document semantics.
 """
 
 from __future__ import annotations

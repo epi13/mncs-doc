@@ -1,0 +1,60 @@
+mncs 0.18;
+
+// Generic document-region semantics. The host parser identifies marker bytes
+// and supplies their bounded source spans; this module decides whether those
+// spans form one lossless replacement region and returns exact prefix/suffix
+// boundaries. Filesystem enumeration and byte-marker search remain explicit
+// transport boundaries.
+module mncs.doc.region;
+
+enum RegionStatus { Missing, Invalid, Valid }
+
+record RegionInput {
+    source_length: u64,
+    begin_count: u64,
+    end_count: u64,
+    begin_start: u64,
+    begin_end: u64,
+    end_start: u64,
+    end_end: u64
+}
+
+record RegionDecision {
+    status: RegionStatus,
+    replacement_start: u64,
+    replacement_end: u64,
+    prefix_end: u64,
+    suffix_start: u64
+}
+
+fn empty(status: RegionStatus) -> (result: RegionDecision) {
+    return RegionDecision {
+        status: status,
+        replacement_start: 0,
+        replacement_end: 0,
+        prefix_end: 0,
+        suffix_start: 0
+    };
+}
+
+fn classify(input: RegionInput) -> (result: RegionDecision) {
+    if input.begin_count == 0 || input.end_count == 0 {
+        return empty(RegionStatus.Missing);
+    }
+    if input.begin_count != 1 || input.end_count != 1 {
+        return empty(RegionStatus.Invalid);
+    }
+    if input.begin_start > input.begin_end
+        || input.end_start > input.end_end
+        || input.begin_end > input.end_start
+        || input.end_end > input.source_length {
+        return empty(RegionStatus.Invalid);
+    }
+    return RegionDecision {
+        status: RegionStatus.Valid,
+        replacement_start: input.begin_start,
+        replacement_end: input.end_end,
+        prefix_end: input.begin_start,
+        suffix_start: input.end_end
+    };
+}
