@@ -7,3 +7,14 @@
 - Avoid format-specific assumptions in reusable document layers.
 - Record language/compiler/runtime friction in `docs/LANGUAGE_PRESSURES.md`.
 - Include malformed, adversarial and multilingual fixtures in tests.
+
+## Family entry contract
+
+- Establish the bounded Language Service family context and current Commons
+  architecture/pressure identities before broad repository search.
+- Query the current MNCS capability index and existing Commons pressure before
+  adding host projection logic; repair a reusable missing facility upstream
+  where practical.
+- Keep documentation generators deterministic and identity-bound. Host code is
+  an explicit file/Markdown projection boundary until the generic structured
+  document pressure is repaired; it must not become a second family authority.

@@ -21,3 +21,10 @@ Machine-native structured document and rich-text infrastructure for MNCS.
 - `docs/rfcs/0001-foundation.md`
 - `docs/LANGUAGE_PRESSURES.md`
 - `AGENTS.md`
+
+## Projection contract
+
+Deterministic README, RFC-index, and roadmap projections are implemented in
+[`tools/project.py`](tools/project.py) and described in
+[`docs/PROJECTIONS.md`](docs/PROJECTIONS.md). Generated regions are bounded
+and checkable; the surrounding explanation remains human-authored.
