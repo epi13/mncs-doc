@@ -1,0 +1,30 @@
+{
+  "schema_version": "mncs-family.repository-manifest/v0alpha1",
+  "repository": "mncs-doc",
+  "revision": 1,
+  "manifest_location": "in-repository",
+  "authority": {
+    "note": "mncs-doc owns structured-document and deterministic human-facing projection tooling; language and family facts remain owned by their source repositories."
+  },
+  "organization": {
+    "layout": "mncs.repository-layout/1",
+    "surfaces": [
+      {"path": "docs/", "class": "canonical", "authority": "mncs-doc"},
+      {"path": "tools/", "class": "host-boundary", "note": "Deterministic projection adapter until the generic MNCS document-rendering pressure is repaired upstream."},
+      {"path": "tests/", "class": "canonical", "note": "Projection and malformed-document fixtures."}
+    ]
+  },
+  "contracts": {
+    "provides": [
+      {"contract": "structured-document", "version": "1", "kind": "document-infrastructure", "stability": "experimental", "fingerprint_sources": ["docs/", "tests/"]},
+      {"contract": "documentation-projection", "version": "1", "kind": "deterministic-markdown-projection", "stability": "experimental", "fingerprint_sources": ["tools/", "tests/"]}
+    ],
+    "consumes": [
+      {"contract": "mncs-language.capability-index", "envelope": {"op": "any"}, "required": false},
+      {"contract": "mncs-commons.family-architecture", "envelope": {"op": "any"}, "required": false}
+    ],
+    "tests": [
+      {"test": "document-tests", "covers": ["structured-document", "documentation-projection"], "obligation": "self", "command": {"argv": ["python3", "-m", "unittest", "discover", "-s", "tests"]}}
+    ]
+  }
+}

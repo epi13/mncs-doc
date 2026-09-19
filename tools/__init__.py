@@ -1,0 +1,1 @@
+"""Deterministic documentation projection adapters."""
