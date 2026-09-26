@@ -1,0 +1,19 @@
+mncs 0.17;
+
+// Ambiguity fixture side A.
+//
+// Refers to [[create]] (present in both sides: ambiguous),
+// [[NoSuchThing]] (missing), and
+// [[mncs:0.2:function:mncs.doc.fixture_gone.v9::removed]] (stale identity).
+module mncs.doc.fixture_amb_a.v1;
+
+// Creates the A value.
+fn create() -> (result: i64) {
+    return 1;
+}
+
+// Uses the ambiguous reference. See [[create]] and [[NoSuchThing]].
+// Also see [[mncs:0.2:function:mncs.doc.fixture_gone.v9::removed]].
+fn use_create() -> (result: i64) {
+    return create();
+}

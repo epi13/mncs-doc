@@ -1,0 +1,9 @@
+mncs 0.17;
+
+// Ambiguity fixture side B.
+module mncs.doc.fixture_amb_b.v1;
+
+// Creates the B value.
+fn create() -> (result: i64) {
+    return 2;
+}

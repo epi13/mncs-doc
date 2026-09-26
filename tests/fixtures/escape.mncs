@@ -1,0 +1,12 @@
+mncs 0.17;
+
+// Escaping fixture.
+//
+// Doc text with markup-looking content: <b>bold</b> & "quotes".
+// A use of <script>alert(1)</script> must never become raw HTML.
+module mncs.doc.fixture_escape.v1;
+
+// Echoes with <angle> brackets & ampersands in docs.
+fn echo(value: i64) -> (result: i64) {
+    return value;
+}
