@@ -1,0 +1,41 @@
+mncs 0.18;
+
+// Fixture ledger module for mncs-doc extraction tests.
+//
+// A tiny ledger with a stored entry. See [[Entry]] and
+// [[mncs.doc.fixture_api.v1::total]] for the read path.
+module mncs.doc.fixture_api.v1;
+
+// A stored ledger entry.
+record Entry { amount: i64, flags: i64 }
+
+// Entry kinds known to the fixture.
+enum EntryKind { Credit, Debit }
+
+// Logs one entry amount. See [[Entry]].
+fn log_entry(amount: i64, flags: i64) -> (result: Entry) {
+    return Entry { amount: amount, flags: flags };
+}
+
+// Totals two entries. See [[log_entry]].
+// @example total_adds_amounts
+fn total(first: Entry, second: Entry) -> (result: i64) {
+    return first.amount + second.amount;
+}
+
+fn sum_run<N: Nat>(xs: [i64; N]) -> (result: i64) {
+    return xs[0];
+}
+
+// Posts an entry through the fixture capability.
+fn post(entry: Entry) -> (result: i64)
+    capability ledger_capability
+    effect ledger_post authorized_by ledger_capability
+{
+    return entry.amount;
+}
+
+// Totals two posted amounts.
+test total_adds_amounts() -> (result: i64) {
+    return total(Entry { amount: 19, flags: 0 }, Entry { amount: 23, flags: 0 });
+}

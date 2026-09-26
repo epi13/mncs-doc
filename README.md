@@ -1,38 +1,62 @@
 # mncs-doc
 
-Machine-native structured document and rich-text infrastructure for MNCS.
+The canonical MNCS documentation system: documentation as a derived,
+identity-aware, verifiable view of the actual system.
 
-`mncs-doc` pressures `mncs-language` with text-heavy, semantic and human-facing workloads: Unicode, parsing, source locations, syntax trees, transformations, formatting, layout, search and lossy/lossless interchange.
+```
+compiler inventories + authored comments + repo identity
+-> documentation model -> Markdown / HTML / text + index + validation
+```
 
-## Initial scope
+## What Doc owns
 
-- Unicode-aware text primitives and source spans
-- Markdown/HTML-style structured document ingestion
-- document AST and semantic nodes
-- parsing and lossless/source-preserving transforms where possible
-- visitors, queries and rewriting
-- rendering/formatting adapters
-- indexing/search boundaries
-- diagnostics for malformed documents
+The documentation semantic model, extraction from canonical metadata,
+identity-based cross references, structural validation, example-to-test
+linkage, renderers, semantic indexes, and stale-doc detection.  See
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
+Doc does not own language semantics, compiler symbol authority, project
+topology, test verdicts, or persistence; those stay with their owners
+and are consumed read-only.
+
+## Quick start
+
+```text
+export MNCS_BIN=/path/to/mncs   # or place mncs on PATH
+python3 tools/mncs_doc.py extract --source path/to/module.mncs --output model.json
+python3 tools/mncs_doc.py render --model model.json --format markdown --output api.md
+python3 tools/mncs_doc.py validate --model model.json
+python3 tools/mncs_doc.py query --model model.json --qualified my.module::my_fn --format text
+```
+
+Full command and schema reference: [`docs/MODEL.md`](docs/MODEL.md).
+Authoring conventions (comments, `[[xrefs]]`, `@example`):
+[`docs/AUTHORING.md`](docs/AUTHORING.md).
+Known metadata gaps: [`docs/PRESSURES.md`](docs/PRESSURES.md).
 
 ## Repository layout
 
-- `docs/ARCHITECTURE.md`
-- `docs/rfcs/0001-foundation.md`
-- `docs/LANGUAGE_PRESSURES.md`
-- `AGENTS.md`
+- `native/mncs/doc/model.mncs` — native verdict lattice (link status,
+  severity, example state, tally folding) with self-contained tests.
+  Doc documents this module with itself.
+- `tools/mncs_doc.py` — host adapter: extract, render, index, query,
+  validate (including opt-in `--verify-examples`).
+- `tools/project.py` — deterministic README/RFC-index/roadmap
+  projections over family context (retained; see
+  [`docs/PROJECTIONS.md`](docs/PROJECTIONS.md)).
+- `tests/fixtures/*.mncs` — MNCS fixtures for the semantic test suite.
+- `tests/test_doc.py` — extraction, signatures, identity, xrefs,
+  examples, staleness, determinism, rendering, query.
+- `tests/test_projection.py` — projection adapter tests (retained).
+- `docs/ARCHITECTURE.md`, `docs/MODEL.md`, `docs/AUTHORING.md`,
+  `docs/PRESSURES.md`, `docs/LANGUAGE_PRESSURES.md`,
+  `docs/rfcs/0001-foundation.md`.
 
-## Projection contract
+## Verification
 
-Deterministic README, RFC-index, and roadmap projections are implemented as a
-family-specific dogfood workload in
-[`tools/project.py`](tools/project.py) and described in
-[`docs/PROJECTIONS.md`](docs/PROJECTIONS.md). Generated regions are bounded
-and checkable; the surrounding explanation remains human-authored. This does
-not yet provide the reusable `structured-document` contract from RFC 0001.
+```text
+python3 -m unittest discover -s tests
+```
 
-The first reusable vertical slice is `native/mncs/doc/region.mncs`: a bounded
-source-span decision function for lossless generated-region replacement. The
-host projector still finds marker bytes and publishes files; the region
-ordering and replacement boundaries are document semantics owned by
-`mncs-doc`.
+`MNCS_BIN` (or `mncs` on `PATH`) must point at the compiler binary;
+inventory-backed tests skip cleanly without it.

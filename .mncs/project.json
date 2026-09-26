@@ -1,31 +1,36 @@
 {
   "schema_version": "mncs-family.repository-manifest/v0alpha1",
   "repository": "mncs-doc",
-  "revision": 4,
+  "revision": 2,
   "manifest_location": "in-repository",
   "authority": {
-    "note": "mncs-doc owns reusable document/text/parser/transform/render capabilities. The family Markdown projector is a dogfood workload; language and family facts remain owned by their source repositories."
+    "note": "mncs-doc owns the documentation semantic model, xref resolution, validation, example linkage, renderers, and indexes; language/compiler/project facts remain owned by their source repositories and are consumed read-only."
   },
   "organization": {
     "layout": "mncs.repository-layout/1",
     "surfaces": [
-      {"path": "docs/", "class": "canonical", "authority": "mncs-doc", "classification": {"authority": "canonical", "lifecycle": "active", "boundary_kind": "none", "semantic_role": "canonical-semantic"}},
-      {"path": "native/", "class": "canonical", "authority": "mncs-doc", "note": "Reusable document-region semantics implemented in MNCS; marker search and publication remain host boundaries.", "classification": {"authority": "canonical", "lifecycle": "active", "boundary_kind": "none", "semantic_role": "canonical-semantic"}},
-      {"path": "tools/", "class": "migration-shadow", "authority": "mncs-doc", "note": "Family-specific projection workload and temporary host semantic implementation; filesystem publication is the boundary, while document policy remains pressure-backed until native replacement.", "classification": {"authority": "none", "lifecycle": "temporary", "boundary_kind": "filesystem", "semantic_role": "temporary-host-semantic"}},
-      {"path": "tests/", "class": "differential-oracle", "authority": "mncs-doc", "note": "Projection and malformed-document fixtures.", "classification": {"authority": "reference", "lifecycle": "active", "boundary_kind": "none", "semantic_role": "differential-oracle"}}
+      {"path": "docs/", "class": "canonical", "authority": "mncs-doc"},
+      {"path": "native/", "class": "canonical", "authority": "mncs-doc", "note": "Native verdict lattice (link status, severity, example state, tally folding) with self-contained tests."},
+      {"path": "tools/", "class": "host-boundary", "note": "Deterministic documentation adapter (mncs_doc) and family-context projection adapter (project); filesystem, inventory invocation, and rendering boundary."},
+      {"path": "tests/", "class": "canonical", "note": "Semantic documentation fixtures and suites plus projection tests."}
     ]
   },
   "contracts": {
     "provides": [
-      {"contract": "document-region", "version": "1", "kind": "native-module", "stability": "experimental", "fingerprint_sources": ["native/mncs/doc/region.mncs", "tests/test_native_region.py"], "notes": "Bounded source-span validation and lossless replacement boundaries; does not claim a complete structured-document engine."},
-      {"contract": "document-projection-workload", "version": "1", "kind": "dogfood-workload", "stability": "experimental", "fingerprint_sources": ["tools/", "tests/"]}
+      {"contract": "structured-document", "version": "1", "kind": "document-infrastructure", "stability": "experimental", "fingerprint_sources": ["docs/", "tests/"]},
+      {"contract": "documentation-projection", "version": "1", "kind": "deterministic-markdown-projection", "stability": "experimental", "fingerprint_sources": ["tools/project.py", "tests/test_projection.py"]},
+      {"contract": "documentation-model", "version": "1", "kind": "semantic-documentation-model", "stability": "experimental", "fingerprint_sources": ["tools/mncs_doc.py", "native/", "tests/test_doc.py", "tests/fixtures/"]},
+      {"contract": "documentation-validation", "version": "1", "kind": "documentation-validation-report", "stability": "experimental", "fingerprint_sources": ["tools/mncs_doc.py", "tests/test_doc.py"]},
+      {"contract": "documentation-index", "version": "1", "kind": "semantic-documentation-index", "stability": "experimental", "fingerprint_sources": ["tools/mncs_doc.py", "tests/test_doc.py"]}
     ],
     "consumes": [
+      {"contract": "mncs.compiler.declaration-inventory/1", "envelope": {"op": "any"}, "required": true},
+      {"contract": "mncs.compiler.test-inventory/1", "envelope": {"op": "any"}, "required": true},
       {"contract": "mncs-language.capability-index", "envelope": {"op": "any"}, "required": false},
       {"contract": "mncs-commons.family-architecture", "envelope": {"op": "any"}, "required": false}
     ],
     "tests": [
-      {"test": "document-tests", "covers": ["document-projection-workload"], "obligation": "self", "command": {"argv": ["python3", "-m", "unittest", "discover", "-s", "tests"]}}
+      {"test": "document-tests", "covers": ["structured-document", "documentation-projection", "documentation-model", "documentation-validation", "documentation-index"], "obligation": "self", "command": {"argv": ["python3", "-m", "unittest", "discover", "-s", "tests"]}}
     ]
   }
 }

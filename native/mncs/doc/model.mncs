@@ -1,0 +1,184 @@
+mncs 0.17;
+
+// mncs.doc.model — the native semantic core of mncs-doc verdicts.
+//
+// Documentation links and validation outcomes are ordinary MNCS values.
+// They do not parse, render, print, or decide a process exit code.  A host
+// adapter transports compiler inventory into documentation records; this
+// module owns only the verdict lattice those records fold into.
+//
+// Numeric codes are carried beside the finite values.  The current
+// execution ABI preserves a finite value's discriminant and identity but
+// does not expose the source variant spelling at the process boundary, so
+// the codes keep the host protocol explicit and stable while the typed
+// MNCS value stays authoritative internally.
+//
+// Link lifecycle: a resolved link names a live identity; a missing link
+// names nothing in scope; an ambiguous link names more than one identity;
+// a stale link names an identity the current inventory no longer carries.
+module mncs.doc.model.v1;
+
+enum LinkStatus { Resolved, Missing, Ambiguous, Stale }
+
+enum DocSeverity { Ok, Warning, Error }
+
+enum ExampleState { Linked, Missing, Unverified }
+
+record DocLink {
+    status: LinkStatus,
+    status_code: u64,
+    target_hash: u64
+}
+
+record ValidationTally {
+    checked: u64,
+    failed: u64
+}
+
+// Canonical status codes shared with the host adapter.  These values are
+// part of the cross-boundary contract; renumbering them breaks stored
+// validation evidence.
+fn link_status_code(status: LinkStatus) -> (code: u64) {
+    return match status {
+        Resolved => 0,
+        Missing => 1,
+        Ambiguous => 2,
+        Stale => 3,
+    };
+}
+
+// Severity ordering: an error dominates a warning, which dominates ok.
+fn severity_code(severity: DocSeverity) -> (code: u64) {
+    return match severity {
+        Ok => 0,
+        Warning => 1,
+        Error => 2,
+    };
+}
+
+fn example_state_code(state: ExampleState) -> (code: u64) {
+    return match state {
+        Linked => 0,
+        Missing => 1,
+        Unverified => 2,
+    };
+}
+
+// A link carries its own code so the host never re-derives it.
+fn make_link(status: LinkStatus, target_hash: u64) -> (link: DocLink) {
+    return DocLink {
+        status: status,
+        status_code: link_status_code(status),
+        target_hash: target_hash
+    };
+}
+
+// Only a resolved link may be followed.
+fn link_is_followable(link: DocLink) -> (result: bool) {
+    return match link.status {
+        Resolved => true,
+        Missing => false,
+        Ambiguous => false,
+        Stale => false,
+    };
+}
+
+// A stored code is valid only when it matches the canonical code.
+fn link_code_is_canonical(link: DocLink) -> (result: bool) {
+    return link.status_code == link_status_code(link.status);
+}
+
+fn empty_tally() -> (tally: ValidationTally) {
+    return ValidationTally { checked: 0, failed: 0 };
+}
+
+// Folding is total: every observation lands in exactly one bucket.
+fn tally_observe(tally: ValidationTally, failed: bool) -> (result: ValidationTally) {
+    if failed {
+        return ValidationTally { checked: tally.checked + 1, failed: tally.failed + 1 };
+    }
+    return ValidationTally { checked: tally.checked + 1, failed: tally.failed };
+}
+
+fn tally_is_clean(tally: ValidationTally) -> (result: bool) {
+    return tally.failed == 0;
+}
+
+// A resolved link observing success keeps a clean tally clean.
+// See [[make_link]] and [[tally_observe]].
+// @example link_round_trip_is_clean
+fn resolved_link_keeps_tally_clean(target_hash: u64) -> (result: bool) {
+    let link: DocLink = make_link(LinkStatus.Resolved, target_hash);
+    let tally: ValidationTally = tally_observe(empty_tally(), false);
+    if link_code_is_canonical(link) == false {
+        return false;
+    }
+    return link_is_followable(link) && tally_is_clean(tally);
+}
+
+// A missing link is never followable and fails a tally.
+// See [[link_is_followable]] and [[missing_link_outcome]].
+// @example check_missing_link_fails
+fn missing_link_outcome(target_hash: u64) -> (result: bool) {
+    let link: DocLink = make_link(LinkStatus.Missing, target_hash);
+    let tally: ValidationTally = tally_observe(empty_tally(), true);
+    if link_is_followable(link) {
+        return false;
+    }
+    return tally_is_clean(tally) == false;
+}
+
+// Checks the canonical link status code contract.
+test link_codes_are_canonical() -> (result: i64) {
+    let link: DocLink = make_link(LinkStatus.Stale, 7);
+    if link.status_code == 3 {
+        return 1;
+    }
+    return 0;
+}
+
+// Checks that a resolved link round-trips through the tally clean.
+test link_round_trip_is_clean() -> (result: i64) {
+    if resolved_link_keeps_tally_clean(11) {
+        return 1;
+    }
+    return 0;
+}
+
+// Checks that a missing link fails the tally it is observed into.
+test check_missing_link_fails() -> (result: i64) {
+    if missing_link_outcome(13) {
+        return 1;
+    }
+    return 0;
+}
+
+// Checks severity ordering is total and strict.
+test severity_ordering_is_strict() -> (result: i64) {
+    let ok: u64 = severity_code(DocSeverity.Ok);
+    let warning: u64 = severity_code(DocSeverity.Warning);
+    let error: u64 = severity_code(DocSeverity.Error);
+    if ok < warning {
+        if warning < error {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// Checks example states stay distinct.
+test example_states_are_distinct() -> (result: i64) {
+    let linked: u64 = example_state_code(ExampleState.Linked);
+    let missing: u64 = example_state_code(ExampleState.Missing);
+    let unverified: u64 = example_state_code(ExampleState.Unverified);
+    if linked == missing {
+        return 0;
+    }
+    if missing == unverified {
+        return 0;
+    }
+    if linked == unverified {
+        return 0;
+    }
+    return 1;
+}
