@@ -1,0 +1,1 @@
+{"obligations": [{"executor": {"argv": ["python3", "tools/verify_projection.py"], "effects": ["verify"], "ephemeral_roots": [], "kind": "external_integration", "provider": "mncs-doc", "timeout_seconds": 240, "working_directory": "."}, "identity": "mncs-doc.projection-check"}], "repository": "mncs-doc"}
