@@ -72,6 +72,19 @@ record in the model.
 Desired: documentation of the `target` field semantics in the
 inventory schema.  Owner: mncs-compiler.  Blocking: no.
 
+### DOC-07: `model.mncs` native tests use the retired test style
+
+Workload: executable verdict-lattice tests.
+Observed: `native/mncs/doc/model.mncs` carries `test -> i64` blocks,
+but the current toolchain rejects them (`mncs test` reports
+"execution target module does not match program": suites must use the
+`mncs.test.suite` protocol).  No suite executes those blocks; the new
+`projection.mncs` module uses the current style and
+`tests/test_native_region.py` runs it.
+Desired: migrate the `model.mncs` blocks to `mncs.test.suite` or
+retire them explicitly.  Owner: mncs-doc.  Blocking: no (verdict
+semantics are covered through the host suite).
+
 ## Text-workload pressures
 
 The structured-document text pressures in `docs/LANGUAGE_PRESSURES.md`

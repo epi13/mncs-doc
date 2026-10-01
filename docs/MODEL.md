@@ -116,6 +116,26 @@ never scraped Markdown.
 "generated_at"}`.  Written only via `extract --provenance-out`; kept out
 of the model so generation stays byte-deterministic.
 
+## `mncs.projection-descriptor/1`
+
+Names one document-region write a reconciler requests.  The bytes the
+template produced from the sources are applied by `project-apply`,
+which admits the write through native `mncs.doc.projection` policy.
+
+```json
+{"schema_version": "mncs.projection-descriptor/1",
+ "projection": "mncs-doc:rfc-index",
+ "document": "docs/rfc-index.generated.md",
+ "template": "project-rfc-index",
+ "sources": ["docs/rfcs/0001-foundation.md"],
+ "region": "mncs-generated", "create_allowed": true}
+```
+
+Admission reasons: `admitted`, `no-sources`, `no-template`,
+`ambiguous-region`, `create-forbidden`, `unknown-status`.  Region
+status codes are shared with `mncs.doc.region`: 0 Missing, 1 Invalid,
+2 Valid.
+
 ## CLI
 
 ```
