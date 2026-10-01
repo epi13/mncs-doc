@@ -344,8 +344,10 @@ def _relative_link(output: Path, target: Path) -> str:
     return Path(os.path.relpath(target, output.parent)).as_posix()
 
 
-def render_rfc_index(root: Path, output: Path) -> str:
+def render_rfc_index(root: Path, output: Path,
+                     link_base: Path | None = None) -> str:
     records = _rfc_records(root)
+    link_base = link_base or output
     lines = [
         BEGIN,
         "# RFC index",
@@ -356,7 +358,7 @@ def render_rfc_index(root: Path, output: Path) -> str:
         "| --- | --- | --- | --- | --- |",
     ]
     for record in records:
-        link = _relative_link(output, root / record["path"])
+        link = _relative_link(link_base, root / record["path"])
         title = record["title"].replace("|", "\\|")
         lines.append(
             f"| [{record['id']}]({link}) | {title} | {record['status']} | "
@@ -368,8 +370,10 @@ def render_rfc_index(root: Path, output: Path) -> str:
     return "\n".join(lines) + "\n"
 
 
-def project_rfc_index(rfc_root: Path, output: Path, check: bool = False) -> bool:
-    return _write_or_check(output, render_rfc_index(rfc_root, output), check)
+def project_rfc_index(rfc_root: Path, output: Path, check: bool = False,
+                      link_base: Path | None = None) -> bool:
+    return _write_or_check(
+        output, render_rfc_index(rfc_root, output, link_base), check)
 
 
 def render_roadmap(context: dict[str, Any]) -> str:
@@ -570,6 +574,9 @@ def _parser() -> argparse.ArgumentParser:
     rfc.add_argument("--rfc-root", type=Path, required=True)
     rfc.add_argument("--output", type=Path, required=True)
     rfc.add_argument("--check", action="store_true")
+    rfc.add_argument("--link-base", type=Path, default=None,
+                     help="final output path links are relative to; "
+                     "defaults to --output (use when rendering to scratch)")
 
     roadmap = subparsers.add_parser("project-roadmap")
     roadmap.add_argument("--context", type=Path, required=True)
@@ -604,7 +611,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "project-readme":
             ok = project_readme(args.readme, args.context, args.check)
         elif args.command == "project-rfc-index":
-            ok = project_rfc_index(args.rfc_root, args.output, args.check)
+            ok = project_rfc_index(args.rfc_root, args.output, args.check,
+                                   args.link_base)
         elif args.command == "project-apply":
             ok = apply_projection(args.document, args.generated,
                                   args.sources, args.template_present == 1,

@@ -79,6 +79,21 @@ class ProjectionTests(unittest.TestCase):
             self.assertTrue(project.project_rfc_index(rfc_root, output, check=True))
             self.assertNotIn("2026", rendered)
 
+    def test_rfc_index_links_follow_link_base_from_scratch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            rfc_root = root / "repo" / "docs" / "rfcs"
+            rfc_root.mkdir(parents=True)
+            (rfc_root / "0001-first.md").write_text(
+                "# RFC 0001: First\n\nStatus: Draft\n", encoding="utf-8")
+            scratch = root / "session" / "rendered.md"
+            final = root / "repo" / "docs" / "rfc-index.generated.md"
+            self.assertTrue(project.project_rfc_index(
+                rfc_root, scratch, link_base=final))
+            rendered = scratch.read_text(encoding="utf-8")
+            self.assertIn("(rfcs/0001-first.md)", rendered)
+            self.assertNotIn("..", rendered)
+
     def test_roadmap_projection_has_no_subjective_percentages(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

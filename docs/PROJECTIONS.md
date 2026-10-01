@@ -96,12 +96,15 @@ Repositories adopt ambient projection by declaring descriptors in
  "provider_capability": "mncs-doc:documentation-projection",
  "render_argv": ["project-rfc-index", "--rfc-root",
                  "{checkout}/docs/rfcs", "--output",
-                 "{artifact}/rendered.md"],
+                 "{artifact}/rendered.md", "--link-base",
+                 "{checkout}/docs/rfc-index.generated.md"],
  "policy": "ambient-safe"}
 ```
 
 `{checkout}` and `{artifact}` are resolved by the orchestrator from
-its own session state, never guessed from sibling paths.
+its own session state, never guessed from sibling paths. `--link-base`
+names the final output path so links stay repo-relative when rendering
+to session scratch.
 
 Doctor validates local manifest binding and can report stale generated files;
 it does not own the source facts or rewrite human prose.
