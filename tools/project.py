@@ -12,8 +12,10 @@ structured-document semantics.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -23,6 +25,170 @@ from typing import Any, Iterable
 BEGIN = "<!-- MNCS:generated:begin -->"
 END = "<!-- MNCS:generated:end -->"
 SCHEMA = "mncs.documentation-projection/1"
+DESCRIPTOR_SCHEMA = "mncs.projection-descriptor/1"
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+REGION_PROGRAM = REPO_ROOT / "native" / "mncs" / "doc" / "region.mncs"
+PROJECTION_PROGRAM = REPO_ROOT / "native" / "mncs" / "doc" / "projection.mncs"
+
+REGION_MISSING = 0
+REGION_INVALID = 1
+REGION_VALID = 2
+
+ADMIT_REASONS = {
+    0: "admitted",
+    1: "no-sources",
+    2: "no-template",
+    3: "ambiguous-region",
+    4: "create-forbidden",
+    5: "unknown-status",
+}
+
+
+class NativeError(RuntimeError):
+    pass
+
+
+def find_mncs(explicit: str | None = None) -> str | None:
+    from shutil import which
+
+    for candidate in (
+        explicit,
+        os.environ.get("MNCS_BIN"),
+        which("mncs"),
+        str(REPO_ROOT.parent / "mncs-language" / "target" / "debug" / "mncs"),
+        str(REPO_ROOT.parent / "mncs-language" / "target" / "release" / "mncs"),
+    ):
+        if candidate and Path(candidate).is_file():
+            return candidate
+    return None
+
+
+def _plain(value: dict[str, Any]) -> Any:
+    if not isinstance(value, dict) or len(value) != 1:
+        raise NativeError(f"unexpected wire value {value!r}")
+    tag, body = next(iter(value.items()))
+    if tag == "integer":
+        return body["value"]
+    if tag == "boolean":
+        return body["value"]
+    if tag == "finite":
+        return {"variant": body.get("variant_identity", body.get("variant")),
+                "discriminant": body.get("discriminant")}
+    if tag == "record":
+        fields = body["fields"]
+        if isinstance(fields, dict):
+            return {name: _plain(item) for name, item in fields.items()}
+        return {name: _plain(item) for name, item in fields}
+    if tag == "sequence":
+        return [_plain(item) for item in body["values"]]
+    raise NativeError(f"unknown wire tag {tag!r}")
+
+
+def default_libraries() -> list[str]:
+    language_root = os.environ.get("MNCS_LANGUAGE_ROOT")
+    candidates = []
+    if language_root:
+        candidates.append(Path(language_root) / "library")
+    else:
+        candidates.append(REPO_ROOT.parent / "mncs-language" / "library")
+    override = os.environ.get("MNCS_TEST_NATIVE")
+    candidates.append(Path(override) if override
+                      else REPO_ROOT.parent / "mncs-test" / "native")
+    candidates.append(REPO_ROOT / "native")
+    return [str(path) for path in candidates if path.is_dir()]
+
+
+def call_native(mncs_bin: str, program: Path, module: str,
+                function: str, args: list[int]) -> dict[str, Any]:
+    """Invoke a scalar-argument native function; return the decoded record."""
+    payload = [{"integer": {"value": int(item)}} for item in args]
+    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False,
+                                     encoding="utf-8") as handle:
+        json.dump(payload, handle)
+        args_path = handle.name
+    command = [mncs_bin, "call", str(program), "--module", module,
+               "--function", function, "--args", args_path]
+    for library in default_libraries():
+        command += ["--library", library]
+    try:
+        completed = subprocess.run(
+            command, capture_output=True, text=True, timeout=120)
+    except (OSError, subprocess.SubprocessError) as error:
+        raise NativeError(f"cannot start compiler: {error}")
+    finally:
+        try:
+            os.unlink(args_path)
+        except OSError:
+            pass
+    try:
+        document = json.loads(completed.stdout)
+    except ValueError:
+        raise NativeError("compiler returned non-JSON: "
+                          f"{completed.stderr.strip()[:400]}")
+    if document.get("status") != "returned":
+        raise NativeError(f"native call failed: "
+                          f"{document.get('error', document)}")
+    returned = document["call"]["returned"]
+    if not returned:
+        raise NativeError("compiler returned no values")
+    decoded = _plain(returned[0])
+    if not isinstance(decoded, dict):
+        raise NativeError(f"native call returned non-record {decoded!r}")
+    return decoded
+
+
+def classify_spans(mncs_bin: str, document: bytes) -> dict[str, Any]:
+    """Classify marker spans through native `mncs.doc.region`.
+
+    All offsets are byte offsets into the UTF-8 document; the native
+    classifier reasons about bytes, never Unicode scalar indices.
+    """
+    begin = BEGIN.encode("utf-8")
+    end = END.encode("utf-8")
+    begins: list[int] = []
+    ends: list[int] = []
+    cursor = 0
+    while True:
+        found = document.find(begin, cursor)
+        if found == -1:
+            break
+        begins.append(found)
+        cursor = found + len(begin)
+    cursor = 0
+    while True:
+        found = document.find(end, cursor)
+        if found == -1:
+            break
+        ends.append(found)
+        cursor = found + len(end)
+    first_begin = begins[0] if begins else 0
+    first_end = ends[0] if ends else 0
+    decision = call_native(
+        mncs_bin, REGION_PROGRAM, "mncs.doc.region", "classify_fields",
+        [len(document), len(begins), len(ends),
+         first_begin, first_begin + (len(begin) if begins else 0),
+         first_end, first_end + (len(end) if ends else 0)])
+    status = decision.get("status")
+    if isinstance(status, dict):
+        variant = str(status.get("variant", ""))
+        name = variant.split("::")[-1] if "::" in variant else ""
+        code = {"Missing": REGION_MISSING, "Invalid": REGION_INVALID,
+                "Valid": REGION_VALID}.get(name)
+        if code is None:
+            code = status.get("discriminant")
+        decision["status_code"] = code
+    return decision
+
+
+def admit_projection(mncs_bin: str, region_status: int, create_allowed: bool,
+                     source_count: int, template_present: bool) -> dict[str, Any]:
+    """Decide admission through native `mncs.doc.projection`."""
+    return call_native(
+        mncs_bin, PROJECTION_PROGRAM, "mncs.doc.projection.v1",
+        "admit_fields",
+        [region_status, 1 if create_allowed else 0,
+         source_count, 1 if template_present else 0])
 
 
 def _field(value: dict[str, Any], *names: str, default: Any = None) -> Any:
@@ -248,10 +414,74 @@ def render_roadmap(context: dict[str, Any]) -> str:
 
 
 def project_roadmap(context_path: Path, output: Path, check: bool = False) -> bool:
-    import json
-
     context = json.loads(context_path.read_text(encoding="utf-8"))
     return _write_or_check(output, render_roadmap(context), check)
+
+
+def _wrap_generated(generated: bytes) -> bytes:
+    body = generated.decode("utf-8").rstrip("\n")
+    return "\n".join([BEGIN, body, END]).encode("utf-8")
+
+
+def apply_projection(document_path: Path, generated_path: Path,
+                     source_count: int, template_present: bool,
+                     create_allowed: bool, check: bool = False,
+                     mncs_bin: str | None = None) -> bool:
+    """Apply generated bytes to one document's machine-owned region.
+
+    The native region classifier bounds the replacement and the native
+    projection policy admits it; the host only splices admitted bytes.
+    Ambiguous regions are always refused. Without the compiler the
+    operation fails closed: guessing region bounds in the host would
+    risk destroying human prose.
+    """
+    binary = find_mncs(mncs_bin)
+    if binary is None:
+        raise NativeError("mncs compiler binary unavailable; refusing to "
+                          "apply a projection without native region validation")
+    if document_path.exists():
+        current = document_path.read_bytes()
+    elif create_allowed:
+        current = b""
+    else:
+        print(f"projection refused: {document_path} does not exist "
+              f"(create-forbidden)", file=sys.stderr)
+        return False
+    generated = _wrap_generated(generated_path.read_bytes())
+    decision = classify_spans(binary, current)
+    status_code = decision.get("status_code")
+    if status_code is None:
+        raise NativeError(f"native classifier returned no status: {decision!r}")
+    verdict = admit_projection(binary, int(status_code), create_allowed,
+                               source_count, template_present)
+    if not verdict.get("admit"):
+        reason = ADMIT_REASONS.get(int(verdict.get("reason", 5)),
+                                   "unknown-status")
+        print(f"projection refused: {reason}", file=sys.stderr)
+        return False
+    if int(status_code) == REGION_VALID:
+        start = int(decision["replacement_start"])
+        end = int(decision["replacement_end"])
+        expected = current[:start] + generated + current[end:]
+    else:
+        prefix = current.rstrip(b"\n")
+        separator = b"" if not prefix else b"\n\n"
+        expected = prefix + separator + generated + b"\n"
+    actual = current if document_path.exists() else None
+    if check:
+        if actual == expected:
+            return True
+        print(f"stale generated projection: {document_path}", file=sys.stderr)
+        return False
+    document_path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        "wb", dir=document_path.parent, prefix=f".{document_path.name}.",
+        delete=False
+    ) as handle:
+        temporary = Path(handle.name)
+        handle.write(expected)
+    os.replace(temporary, document_path)
+    return True
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -272,6 +502,16 @@ def _parser() -> argparse.ArgumentParser:
     roadmap.add_argument("--context", type=Path, required=True)
     roadmap.add_argument("--output", type=Path, required=True)
     roadmap.add_argument("--check", action="store_true")
+
+    apply = subparsers.add_parser("project-apply")
+    apply.add_argument("--document", type=Path, required=True)
+    apply.add_argument("--generated", type=Path, required=True)
+    apply.add_argument("--sources", type=int, required=True)
+    apply.add_argument("--template-present", type=int, required=True,
+                       choices=(0, 1))
+    apply.add_argument("--create", action="store_true")
+    apply.add_argument("--check", action="store_true")
+    apply.add_argument("--mncs-bin", type=str, default=None)
     return parser
 
 
@@ -282,9 +522,13 @@ def main(argv: list[str] | None = None) -> int:
             ok = project_readme(args.readme, args.context, args.check)
         elif args.command == "project-rfc-index":
             ok = project_rfc_index(args.rfc_root, args.output, args.check)
+        elif args.command == "project-apply":
+            ok = apply_projection(args.document, args.generated,
+                                  args.sources, args.template_present == 1,
+                                  args.create, args.check, args.mncs_bin)
         else:
             ok = project_roadmap(args.context, args.output, args.check)
-    except (OSError, ValueError, KeyError) as error:
+    except (OSError, ValueError, KeyError, NativeError) as error:
         print(f"projection failed: {error}", file=sys.stderr)
         return 2
     return 0 if ok else 1

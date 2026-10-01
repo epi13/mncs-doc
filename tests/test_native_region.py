@@ -40,5 +40,38 @@ class NativeDocumentRegionTests(unittest.TestCase):
         )
 
 
+class NativeProjectionSuiteTests(unittest.TestCase):
+    def test_projection_native_suite_passes(self) -> None:
+        language_root = Path(os.environ.get("MNCS_LANGUAGE_ROOT", ROOT.parent / "mncs-language"))
+        binary = Path(os.environ.get("MNCS_BINARY", language_root / "target/debug/mncs"))
+        override = os.environ.get("MNCS_BIN")
+        if override:
+            binary = Path(override)
+        if not binary.is_file():
+            self.skipTest("mncs-language compiler binary is not available")
+        test_native = Path(os.environ.get(
+            "MNCS_TEST_NATIVE", str(ROOT.parent / "mncs-test" / "native")))
+        environment = {
+            **os.environ,
+            "MNCS_LIBRARY_PATH": os.environ.get(
+                "MNCS_LIBRARY_PATH", str(language_root / "library")
+            ),
+        }
+        result = subprocess.run(
+            [str(binary), "test", str(ROOT / "native/mncs/doc/projection.mncs"),
+             "--library", str(test_native), "--library", str(ROOT / "native")],
+            cwd=ROOT,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
+        document = json.loads(result.stdout)
+        summary = document.get("summary", document)
+        self.assertEqual(summary.get("failed", 0), 0, result.stdout[:2000])
+        self.assertGreater(summary.get("passed", 0), 0, result.stdout[:2000])
+
+
 if __name__ == "__main__":
     unittest.main()

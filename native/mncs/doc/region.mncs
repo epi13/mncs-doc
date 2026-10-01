@@ -37,6 +37,22 @@ fn empty(status: RegionStatus) -> (result: RegionDecision) {
     };
 }
 
+// Scalar-argument boundary entry point for host callers: the host
+// supplies marker spans it found and receives the same decision the
+// record entry point computes. RegionStatus positions (Missing 0,
+// Invalid 1, Valid 2) are part of the cross-boundary contract.
+fn classify_fields(source_length_value: u64, begin_count_value: u64, end_count_value: u64, begin_start_value: u64, begin_end_value: u64, end_start_value: u64, end_end_value: u64) -> (result: RegionDecision) {
+    return classify(RegionInput {
+        source_length: source_length_value,
+        begin_count: begin_count_value,
+        end_count: end_count_value,
+        begin_start: begin_start_value,
+        begin_end: begin_end_value,
+        end_start: end_start_value,
+        end_end: end_end_value
+    });
+}
+
 fn classify(input: RegionInput) -> (result: RegionDecision) {
     if input.begin_count == 0 || input.end_count == 0 {
         return empty(RegionStatus.Missing);

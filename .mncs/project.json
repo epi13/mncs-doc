@@ -18,7 +18,7 @@
   "contracts": {
     "provides": [
       {"contract": "structured-document", "version": "1", "kind": "document-infrastructure", "stability": "experimental", "fingerprint_sources": ["docs/", "tests/"]},
-      {"contract": "documentation-projection", "version": "1", "kind": "deterministic-markdown-projection", "stability": "experimental", "fingerprint_sources": ["tools/project.py", "tests/test_projection.py"]},
+      {"contract": "documentation-projection", "version": "1", "kind": "deterministic-markdown-projection", "stability": "experimental", "fingerprint_sources": ["tools/project.py", "native/mncs/doc/region.mncs", "native/mncs/doc/projection.mncs", "tests/test_projection.py", "tests/test_native_region.py"]},
       {"contract": "documentation-model", "version": "1", "kind": "semantic-documentation-model", "stability": "experimental", "fingerprint_sources": ["tools/mncs_doc.py", "native/", "tests/test_doc.py", "tests/fixtures/"]},
       {"contract": "documentation-validation", "version": "1", "kind": "documentation-validation-report", "stability": "experimental", "fingerprint_sources": ["tools/mncs_doc.py", "tests/test_doc.py"]},
       {"contract": "documentation-index", "version": "1", "kind": "semantic-documentation-index", "stability": "experimental", "fingerprint_sources": ["tools/mncs_doc.py", "tests/test_doc.py"]}
