@@ -1,2 +1,4 @@
 __pycache__/
 *.pyc
+.mncs/cache/
+.mncs/doctor/
