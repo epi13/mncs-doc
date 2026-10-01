@@ -310,8 +310,6 @@ def _write_or_check(path: Path, expected: str, check: bool) -> bool:
 
 
 def project_readme(readme: Path, context_path: Path, check: bool = False) -> bool:
-    import json
-
     context = json.loads(context_path.read_text(encoding="utf-8"))
     current = readme.read_text(encoding="utf-8") if readme.exists() else ""
     generated = _generated_section(_context_lines(context))
