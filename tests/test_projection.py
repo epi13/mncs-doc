@@ -207,6 +207,53 @@ class ApplyProjectionTests(unittest.TestCase):
                 template_present=False, create_allowed=False))
             self.assertEqual(before, document.read_bytes())
 
+    @require_binary
+    def test_admit_query_reports_without_mutating(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            document = self._write(
+                root, "README.md",
+                "# Title\n\n"
+                "<!-- MNCS:generated:begin -->\nold\n<!-- MNCS:generated:end -->\n")
+            generated = self._write(root, "gen.md", "new\n")
+            expect_out = root / "expected.md"
+            before = document.read_bytes()
+            admission = project.admit_projection(
+                document, source_count=2, template_present=True,
+                create_allowed=False, generated_path=generated,
+                expect_out=expect_out)
+            self.assertEqual(admission["schema_version"],
+                             project.ADMISSION_SCHEMA)
+            self.assertEqual(admission["status"], project.REGION_VALID)
+            self.assertTrue(admission["admit"])
+            self.assertIn("region_digest", admission)
+            self.assertIn("expected_digest", admission)
+            self.assertEqual(before, document.read_bytes())
+            expected = expect_out.read_bytes()
+            self.assertIn(b"new", expected)
+            self.assertIn(b"# Title", expected)
+            self.assertNotIn(b"old\n", expected)
+
+    @require_binary
+    def test_admit_query_refuses_ambiguous_without_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            document = self._write(
+                root, "README.md",
+                "<!-- MNCS:generated:begin -->\na\n<!-- MNCS:generated:end -->\n"
+                "<!-- MNCS:generated:begin -->\nb\n<!-- MNCS:generated:end -->\n")
+            generated = self._write(root, "gen.md", "new\n")
+            expect_out = root / "expected.md"
+            admission = project.admit_projection(
+                document, source_count=1, template_present=True,
+                create_allowed=True, generated_path=generated,
+                expect_out=expect_out)
+            self.assertEqual(admission["status"], project.REGION_INVALID)
+            self.assertFalse(admission["admit"])
+            self.assertEqual(admission["reason_name"], "ambiguous-region")
+            self.assertNotIn("expected_digest", admission)
+            self.assertFalse(expect_out.exists())
+
     def test_apply_fails_closed_without_compiler(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

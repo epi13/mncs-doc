@@ -72,5 +72,36 @@ destroy human prose. The projection descriptor shape is
 decisions that drive this command live in mncs-automation
 (`mncs.reconcile-decision/1`); see its RFC 0002.
 
+## Environment provider contract
+
+`mncs-doc:documentation-projection` exposes `tools/project.py`
+through the Environment with read effects. The provider renders
+deterministic bytes to caller-provided output paths and validates
+regions natively; it never decides which repository paths are safe
+to mutate. Repository writes are the invoking orchestrator's gated
+responsibility (claim-scoped, natively admitted): the provider
+trusts the caller's output paths exactly as Doctor providers trust
+`--root`. Ambient orchestration renders to session artifact paths,
+compares bytes, and applies only whole-file outputs under a live
+path claim; region splicing into human-authored files is explicit
+only.
+
+Repositories adopt ambient projection by declaring descriptors in
+`.mncs/project.json`:
+
+```json
+{"id": "mncs-doc:rfc-index", "template": "project-rfc-index",
+ "inputs": ["docs/rfcs"], "output": "docs/rfc-index.generated.md",
+ "output_kind": "whole-file",
+ "provider_capability": "mncs-doc:documentation-projection",
+ "render_argv": ["project-rfc-index", "--rfc-root",
+                 "{checkout}/docs/rfcs", "--output",
+                 "{artifact}/rendered.md"],
+ "policy": "ambient-safe"}
+```
+
+`{checkout}` and `{artifact}` are resolved by the orchestrator from
+its own session state, never guessed from sibling paths.
+
 Doctor validates local manifest binding and can report stale generated files;
 it does not own the source facts or rewrite human prose.

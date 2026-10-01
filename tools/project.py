@@ -35,6 +35,9 @@ REGION_MISSING = 0
 REGION_INVALID = 1
 REGION_VALID = 2
 
+ADMISSION_SCHEMA = "mncs.projection-admission/1"
+REGION_NAMES = {0: "missing", 1: "invalid", 2: "valid"}
+
 ADMIT_REASONS = {
     0: "admitted",
     1: "no-sources",
@@ -181,14 +184,7 @@ def classify_spans(mncs_bin: str, document: bytes) -> dict[str, Any]:
     return decision
 
 
-def admit_projection(mncs_bin: str, region_status: int, create_allowed: bool,
-                     source_count: int, template_present: bool) -> dict[str, Any]:
-    """Decide admission through native `mncs.doc.projection`."""
-    return call_native(
-        mncs_bin, PROJECTION_PROGRAM, "mncs.doc.projection.v1",
-        "admit_fields",
-        [region_status, 1 if create_allowed else 0,
-         source_count, 1 if template_present else 0])
+
 
 
 def _field(value: dict[str, Any], *names: str, default: Any = None) -> Any:
@@ -421,6 +417,91 @@ def _wrap_generated(generated: bytes) -> bytes:
     return "\n".join([BEGIN, body, END]).encode("utf-8")
 
 
+def _expected_bytes(current: bytes | None, generated: bytes,
+                    status_code: int, decision: dict[str, Any]) -> bytes:
+    if status_code == REGION_VALID:
+        assert current is not None
+        start = int(decision["replacement_start"])
+        end = int(decision["replacement_end"])
+        return current[:start] + generated + current[end:]
+    prefix = (current or b"").rstrip(b"\n")
+    separator = b"" if not prefix else b"\n\n"
+    return prefix + separator + generated + b"\n"
+
+
+def admit_projection(document_path: Path, source_count: int,
+                     template_present: bool, create_allowed: bool,
+                     generated_path: Path | None = None,
+                     expect_out: Path | None = None,
+                     mncs_bin: str | None = None) -> dict[str, Any]:
+    """Classify and admit a region write without mutating the document.
+
+    Returns the `mncs.projection-admission/1` envelope. When
+    `generated_path` and `expect_out` are both given and the write is
+    admitted, the full expected file bytes are written to `expect_out`
+    (a caller-provided scratch path, never the document itself) so an
+    orchestrator can compare, claim, and copy without reimplementing
+    the splice. Read-only against repositories.
+    """
+    import hashlib
+
+    binary = find_mncs(mncs_bin)
+    if binary is None:
+        raise NativeError("mncs compiler binary unavailable; cannot "
+                          "classify projection region")
+    if document_path.exists():
+        current: bytes | None = document_path.read_bytes()
+    elif create_allowed:
+        current = b""
+    else:
+        return {"schema_version": ADMISSION_SCHEMA, "status": REGION_MISSING,
+                "status_name": "missing", "admit": False,
+                "reason": 4, "reason_name": "create-forbidden",
+                "document_exists": False}
+    assert current is not None
+    decision = classify_spans(binary, current)
+    status_code = decision.get("status_code")
+    if status_code is None:
+        raise NativeError(f"native classifier returned no status: {decision!r}")
+    status_code = int(status_code)
+    verdict = native_admit(binary, status_code, create_allowed,
+                           source_count, template_present)
+    admitted = bool(verdict.get("admit"))
+    reason = int(verdict.get("reason", 5))
+    envelope: dict[str, Any] = {
+        "schema_version": ADMISSION_SCHEMA, "status": status_code,
+        "status_name": REGION_NAMES.get(status_code, "unknown"),
+        "admit": admitted, "reason": reason,
+        "reason_name": ADMIT_REASONS.get(reason, "unknown-status"),
+        "document_exists": True,
+    }
+    if status_code == REGION_VALID:
+        envelope["replacement_start"] = int(decision["replacement_start"])
+        envelope["replacement_end"] = int(decision["replacement_end"])
+        envelope["region_digest"] = "sha256:" + hashlib.sha256(
+            current[int(decision["replacement_start"]):int(
+                decision["replacement_end"])]).hexdigest()
+    if admitted and generated_path is not None and expect_out is not None:
+        wrapped = _wrap_generated(generated_path.read_bytes())
+        expected = _expected_bytes(current, wrapped, status_code, decision)
+        expect_out.parent.mkdir(parents=True, exist_ok=True)
+        expect_out.write_bytes(expected)
+        envelope["expected_digest"] = "sha256:" + hashlib.sha256(
+            expected).hexdigest()
+    return envelope
+
+
+def native_admit(mncs_bin: str, region_status: int,
+                 create_allowed: bool, source_count: int,
+                 template_present: bool) -> dict[str, Any]:
+    """Decide admission through native `mncs.doc.projection`."""
+    return call_native(
+        mncs_bin, PROJECTION_PROGRAM, "mncs.doc.projection.v1",
+        "admit_fields",
+        [region_status, 1 if create_allowed else 0,
+         source_count, 1 if template_present else 0])
+
+
 def apply_projection(document_path: Path, generated_path: Path,
                      source_count: int, template_present: bool,
                      create_allowed: bool, check: bool = False,
@@ -450,21 +531,15 @@ def apply_projection(document_path: Path, generated_path: Path,
     status_code = decision.get("status_code")
     if status_code is None:
         raise NativeError(f"native classifier returned no status: {decision!r}")
-    verdict = admit_projection(binary, int(status_code), create_allowed,
-                               source_count, template_present)
+    verdict = native_admit(binary, int(status_code), create_allowed,
+                           source_count, template_present)
     if not verdict.get("admit"):
         reason = ADMIT_REASONS.get(int(verdict.get("reason", 5)),
                                    "unknown-status")
         print(f"projection refused: {reason}", file=sys.stderr)
         return False
-    if int(status_code) == REGION_VALID:
-        start = int(decision["replacement_start"])
-        end = int(decision["replacement_end"])
-        expected = current[:start] + generated + current[end:]
-    else:
-        prefix = current.rstrip(b"\n")
-        separator = b"" if not prefix else b"\n\n"
-        expected = prefix + separator + generated + b"\n"
+    expected = _expected_bytes(current, generated, int(status_code),
+                               decision)
     actual = current if document_path.exists() else None
     if check:
         if actual == expected:
@@ -510,6 +585,16 @@ def _parser() -> argparse.ArgumentParser:
     apply.add_argument("--create", action="store_true")
     apply.add_argument("--check", action="store_true")
     apply.add_argument("--mncs-bin", type=str, default=None)
+
+    admit = subparsers.add_parser("project-admit")
+    admit.add_argument("--document", type=Path, required=True)
+    admit.add_argument("--sources", type=int, required=True)
+    admit.add_argument("--template-present", type=int, required=True,
+                       choices=(0, 1))
+    admit.add_argument("--create", action="store_true")
+    admit.add_argument("--generated", type=Path, default=None)
+    admit.add_argument("--expect-out", type=Path, default=None)
+    admit.add_argument("--mncs-bin", type=str, default=None)
     return parser
 
 
@@ -524,6 +609,14 @@ def main(argv: list[str] | None = None) -> int:
             ok = apply_projection(args.document, args.generated,
                                   args.sources, args.template_present == 1,
                                   args.create, args.check, args.mncs_bin)
+        elif args.command == "project-admit":
+            admission = admit_projection(
+                args.document, args.sources,
+                args.template_present == 1, args.create,
+                generated_path=args.generated,
+                expect_out=args.expect_out, mncs_bin=args.mncs_bin)
+            print(json.dumps(admission, sort_keys=True))
+            ok = True
         else:
             ok = project_roadmap(args.context, args.output, args.check)
     except (OSError, ValueError, KeyError, NativeError) as error:
