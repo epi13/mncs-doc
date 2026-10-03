@@ -1,0 +1,194 @@
+{
+  "capabilities": [
+    {
+      "contract": "structured-document",
+      "fingerprint_sources": [
+        "docs/",
+        "tests/"
+      ],
+      "kind": "document-infrastructure",
+      "stability": "experimental",
+      "version": "1"
+    },
+    {
+      "contract": "documentation-projection",
+      "effects": [
+        "read"
+      ],
+      "fingerprint_sources": [
+        "tools/project.py",
+        "native/mncs/doc/region.mncs",
+        "native/mncs/doc/projection.mncs",
+        "tests/test_projection.py",
+        "tests/test_native_region.py",
+        "tools/semantic.py",
+        "native/mncs/doc/state.mncs",
+        ".mncs/semantic-artifact.json"
+      ],
+      "invocation": {
+        "fixed_argv": [],
+        "kind": "python",
+        "path": "tools/project.py",
+        "toolchain": {
+          "path": "target/release/mncs",
+          "repository": "mncs-language"
+        },
+        "toolchain_env": "MNCS_BIN"
+      },
+      "kind": "deterministic-markdown-projection",
+      "stability": "experimental",
+      "version": "1"
+    },
+    {
+      "contract": "documentation-model",
+      "fingerprint_sources": [
+        "tools/mncs_doc.py",
+        "native/",
+        "tests/test_doc.py",
+        "tests/fixtures/"
+      ],
+      "kind": "semantic-documentation-model",
+      "stability": "experimental",
+      "version": "1"
+    },
+    {
+      "contract": "documentation-validation",
+      "fingerprint_sources": [
+        "tools/mncs_doc.py",
+        "tests/test_doc.py"
+      ],
+      "kind": "documentation-validation-report",
+      "stability": "experimental",
+      "version": "1"
+    },
+    {
+      "contract": "documentation-index",
+      "fingerprint_sources": [
+        "tools/mncs_doc.py",
+        "tests/test_doc.py"
+      ],
+      "kind": "semantic-documentation-index",
+      "stability": "experimental",
+      "version": "1"
+    },
+    {
+      "contract": "semantic-interpretation",
+      "effects": [
+        "read"
+      ],
+      "fingerprint_sources": [
+        "tools/semantic.py",
+        "native/mncs/doc/state.mncs",
+        ".mncs/semantic-artifact.json"
+      ],
+      "invocation": {
+        "kind": "python",
+        "path": "tools/semantic.py",
+        "toolchain": {
+          "path": "target/release/mncs",
+          "repository": "mncs-language"
+        },
+        "toolchain_env": "MNCS_BIN"
+      },
+      "kind": "ephemeral-semantic-project-interpretation",
+      "stability": "experimental",
+      "version": "1"
+    }
+  ],
+  "dependencies": [
+    {
+      "contract": "mncs.compiler.declaration-inventory/1",
+      "envelope": {
+        "op": "any"
+      },
+      "required": true
+    },
+    {
+      "contract": "mncs.compiler.test-inventory/1",
+      "envelope": {
+        "op": "any"
+      },
+      "required": true
+    },
+    {
+      "contract": "mncs-language.capability-index",
+      "envelope": {
+        "op": "any"
+      },
+      "required": false
+    },
+    {
+      "contract": "mncs-commons.family-architecture",
+      "envelope": {
+        "op": "any"
+      },
+      "required": false
+    }
+  ],
+  "entry": [],
+  "purpose": "mncs-doc owns the documentation semantic model, xref resolution, validation, example linkage, renderers, and indexes; language/compiler/project facts remain owned by their source repositories and are consumed read-only.",
+  "repository": "mncs-doc",
+  "schema_version": "mncs.project-view/1",
+  "source_identity": "sha256:9d78b06ac583cb1149eea9a3f498c6f03705af3ea9ca413812293c5a3211220d",
+  "structure": {
+    "layout": "mncs.repository-layout/1",
+    "surfaces": [
+      {
+        "artifact_class": "authoritative",
+        "authority": "mncs-doc",
+        "class": "canonical",
+        "path": "docs/"
+      },
+      {
+        "artifact_class": "authoritative",
+        "authority": "mncs-doc",
+        "class": "canonical",
+        "note": "Native verdict lattice (link status, severity, example state, tally folding) with self-contained tests.",
+        "path": "native/"
+      },
+      {
+        "class": "host-boundary",
+        "note": "Deterministic documentation adapter (mncs_doc) and family-context projection adapter (project); filesystem, inventory invocation, and rendering boundary.",
+        "path": "tools/"
+      },
+      {
+        "artifact_class": "authoritative",
+        "class": "canonical",
+        "note": "Semantic documentation fixtures and suites plus projection tests.",
+        "path": "tests/"
+      },
+      {
+        "artifact_class": "authoritative",
+        "authority": "mncs-doc",
+        "class": "canonical",
+        "note": "Authored project intent; execution state is evidence-derived.",
+        "path": ".mncs/project-state.json"
+      },
+      {
+        "artifact_class": "authoritative",
+        "authority": "mncs-doc",
+        "class": "canonical",
+        "note": "Explicit semantic projection ownership and dependencies.",
+        "path": ".mncs/projections.json"
+      },
+      {
+        "artifact_class": "mixed",
+        "class": "generated",
+        "note": "Mixed: only delimited semantic region is projection-owned; surrounding authored bytes are protected.",
+        "path": "README.md"
+      },
+      {
+        "artifact_class": "mixed",
+        "class": "generated",
+        "note": "Mixed: projected evidence board beside preserved authored intent.",
+        "path": "ROADMAP.md"
+      },
+      {
+        "artifact_class": "derived",
+        "class": "generated",
+        "note": "Derived machine-facing interpretation; never an execution input.",
+        "path": ".mncs/project-view.json"
+      }
+    ]
+  }
+}

@@ -1,5 +1,22 @@
 # mncs-doc
 
+<!-- MNCS:generated:begin -->
+## Project entry
+
+mncs-doc owns the documentation semantic model, xref resolution, validation, example linkage, renderers, and indexes; language/compiler/project facts remain owned by their source repositories and are consumed read-only.
+
+Declared capabilities (declarations do not establish execution health):
+
+- `documentation-index/1` — semantic-documentation-index (experimental)
+- `documentation-model/1` — semantic-documentation-model (experimental)
+- `documentation-projection/1` — deterministic-markdown-projection (experimental)
+- `documentation-validation/1` — documentation-validation-report (experimental)
+- `semantic-interpretation/1` — ephemeral-semantic-project-interpretation (experimental)
+- `structured-document/1` — document-infrastructure (experimental)
+
+Semantic sources and ownership: `.mncs/projections.json`.
+<!-- MNCS:generated:end -->
+
 The canonical MNCS documentation system: documentation as a derived,
 identity-aware, verifiable view of the actual system.
 

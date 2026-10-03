@@ -1,0 +1,15 @@
+{
+  "schema_version": "mncs.project-intent/1",
+  "purpose": "mncs-doc owns the documentation semantic model, xref resolution, validation, example linkage, renderers, and indexes; language/compiler/project facts remain owned by their source repositories and are consumed read-only.",
+  "entry": [],
+  "milestones": [
+    {
+      "id": "mncs-doc:projection-conformance",
+      "title": "Declared ambient projection surfaces satisfy their contract",
+      "subject_slot": "declarations",
+      "evidence": "projection-conformance",
+      "dependencies": [],
+      "blockers": []
+    }
+  ]
+}

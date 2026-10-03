@@ -331,7 +331,10 @@ class DeterminismTests(unittest.TestCase):
                                   FIXTURES / "api.mncs"], MNCS_BIN))
         self.assertEqual(first, second)
         model = json.loads(first)
-        self.assertNotIn("2026", first)
+        # Workspace paths may contain dates; only generation metadata would
+        # make an otherwise identical extraction depend on wall-clock time.
+        self.assertNotIn('generated_at', model)
+        self.assertNotIn('timestamp', model)
         identities = [d["identity"] for d in model["declarations"]]
         self.assertEqual(identities, sorted(identities))
 

@@ -91,7 +91,11 @@ def _plain(value: dict[str, Any]) -> Any:
 def default_libraries() -> list[str]:
     language_root = os.environ.get("MNCS_LANGUAGE_ROOT")
     candidates = []
-    if language_root:
+    stdlib = os.environ.get('MNCS_STDLIB_ROOT')
+    dedicated = Path(stdlib) if stdlib else REPO_ROOT.parent / 'mncs-stdlib'
+    if (dedicated / 'library').is_dir():
+        candidates.append(dedicated / 'library')
+    elif language_root:
         candidates.append(Path(language_root) / "library")
     else:
         candidates.append(REPO_ROOT.parent / "mncs-language" / "library")
@@ -606,6 +610,11 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    if (argv or sys.argv[1:])[:1] == ['semantic-project']:
+        from semantic import main as semantic_main
+        family = Path(os.environ.get('MNCS_WORKSPACE_ROOT', REPO_ROOT.parent))
+        sys.path.insert(0, str(family / 'mncs-forge/src'))
+        return semantic_main((argv or sys.argv[1:])[1:])
     args = _parser().parse_args(argv)
     try:
         if args.command == "project-readme":
