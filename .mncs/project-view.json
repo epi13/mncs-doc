@@ -131,7 +131,7 @@
   "purpose": "mncs-doc owns the documentation semantic model, xref resolution, validation, example linkage, renderers, and indexes; language/compiler/project facts remain owned by their source repositories and are consumed read-only.",
   "repository": "mncs-doc",
   "schema_version": "mncs.project-view/1",
-  "source_identity": "sha256:5b203f2725f8d95197210c40075357f9d9fa4c1490ad06ccadf7028eab7529fe",
+  "source_identity": "sha256:1bc713d474708c06954fb0d0e64d4aa83e8f410134937101aab9f594e4c77c6f",
   "structure": {
     "layout": "mncs.repository-layout/1",
     "surfaces": [
