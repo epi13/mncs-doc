@@ -1,0 +1,13 @@
+mncs 0.18;
+module mncs.doc.state.v1;
+
+// Roadmap intent is authored. Completion consumes current owning evidence;
+// neither rendered text nor presence of an evidence file is a PASS verdict.
+// 0 open, 1 complete, 2 blocked, 3 unknown.
+fn milestone(verdict: u64, current: u64, dependencies_complete: u64, blocker: u64) -> (state: u64) {
+    if blocker == 1 || verdict == 0 { return 2; }
+    if current != 1 || verdict > 2 { return 3; }
+    if verdict == 2 { return 3; }
+    if dependencies_complete != 1 { return 0; }
+    return 1;
+}

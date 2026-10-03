@@ -1,7 +1,7 @@
 {
   "schema_version": "mncs-family.repository-manifest/v0alpha1",
   "repository": "mncs-doc",
-  "revision": 2,
+  "revision": 3,
   "manifest_location": "in-repository",
   "authority": {
     "note": "mncs-doc owns the documentation semantic model, xref resolution, validation, example linkage, renderers, and indexes; language/compiler/project facts remain owned by their source repositories and are consumed read-only."
@@ -9,34 +9,252 @@
   "organization": {
     "layout": "mncs.repository-layout/1",
     "surfaces": [
-      {"path": "docs/", "class": "canonical", "authority": "mncs-doc"},
-      {"path": "native/", "class": "canonical", "authority": "mncs-doc", "note": "Native verdict lattice (link status, severity, example state, tally folding) with self-contained tests."},
-      {"path": "tools/", "class": "host-boundary", "note": "Deterministic documentation adapter (mncs_doc) and family-context projection adapter (project); filesystem, inventory invocation, and rendering boundary."},
-      {"path": "tests/", "class": "canonical", "note": "Semantic documentation fixtures and suites plus projection tests."}
+      {
+        "path": "docs/",
+        "class": "canonical",
+        "authority": "mncs-doc",
+        "artifact_class": "authoritative"
+      },
+      {
+        "path": "native/",
+        "class": "canonical",
+        "authority": "mncs-doc",
+        "note": "Native verdict lattice (link status, severity, example state, tally folding) with self-contained tests.",
+        "artifact_class": "authoritative"
+      },
+      {
+        "path": "tools/",
+        "class": "host-boundary",
+        "note": "Deterministic documentation adapter (mncs_doc) and family-context projection adapter (project); filesystem, inventory invocation, and rendering boundary."
+      },
+      {
+        "path": "tests/",
+        "class": "canonical",
+        "note": "Semantic documentation fixtures and suites plus projection tests.",
+        "artifact_class": "authoritative"
+      },
+      {
+        "path": ".mncs/project-state.json",
+        "class": "canonical",
+        "authority": "mncs-doc",
+        "note": "Authored project intent; execution state is evidence-derived.",
+        "artifact_class": "authoritative"
+      },
+      {
+        "path": ".mncs/projections.json",
+        "class": "canonical",
+        "authority": "mncs-doc",
+        "note": "Explicit semantic projection ownership and dependencies.",
+        "artifact_class": "authoritative"
+      },
+      {
+        "path": "README.md",
+        "class": "generated",
+        "note": "Mixed: only delimited semantic region is projection-owned; surrounding authored bytes are protected.",
+        "artifact_class": "mixed"
+      },
+      {
+        "path": "ROADMAP.md",
+        "class": "generated",
+        "note": "Mixed: projected evidence board beside preserved authored intent.",
+        "artifact_class": "mixed"
+      },
+      {
+        "path": ".mncs/project-view.json",
+        "class": "generated",
+        "note": "Derived machine-facing interpretation; never an execution input.",
+        "artifact_class": "derived"
+      }
     ]
   },
   "contracts": {
     "provides": [
-      {"contract": "structured-document", "version": "1", "kind": "document-infrastructure", "stability": "experimental", "fingerprint_sources": ["docs/", "tests/"]},
-      {"contract": "documentation-projection", "version": "1", "kind": "deterministic-markdown-projection", "stability": "experimental", "effects": ["read"], "fingerprint_sources": ["tools/project.py", "native/mncs/doc/region.mncs", "native/mncs/doc/projection.mncs", "tests/test_projection.py", "tests/test_native_region.py"], "invocation": {"kind": "python", "path": "tools/project.py", "fixed_argv": [], "toolchain": {"repository": "mncs-language", "path": "target/release/mncs"}, "toolchain_env": "MNCS_BIN"}},
-      {"contract": "documentation-model", "version": "1", "kind": "semantic-documentation-model", "stability": "experimental", "fingerprint_sources": ["tools/mncs_doc.py", "native/", "tests/test_doc.py", "tests/fixtures/"]},
-      {"contract": "documentation-validation", "version": "1", "kind": "documentation-validation-report", "stability": "experimental", "fingerprint_sources": ["tools/mncs_doc.py", "tests/test_doc.py"]},
-      {"contract": "documentation-index", "version": "1", "kind": "semantic-documentation-index", "stability": "experimental", "fingerprint_sources": ["tools/mncs_doc.py", "tests/test_doc.py"]}
+      {
+        "contract": "structured-document",
+        "version": "1",
+        "kind": "document-infrastructure",
+        "stability": "experimental",
+        "fingerprint_sources": [
+          "docs/",
+          "tests/"
+        ]
+      },
+      {
+        "contract": "documentation-projection",
+        "version": "1",
+        "kind": "deterministic-markdown-projection",
+        "stability": "experimental",
+        "effects": [
+          "read"
+        ],
+        "fingerprint_sources": [
+          "tools/project.py",
+          "native/mncs/doc/region.mncs",
+          "native/mncs/doc/projection.mncs",
+          "tests/test_projection.py",
+          "tests/test_native_region.py",
+          "tools/semantic.py",
+          "native/mncs/doc/state.mncs",
+          "native/mncs/doc/provider.mncs",
+          ".mncs/semantic-artifact.json"
+        ],
+        "invocation": {
+          "kind": "python",
+          "path": "tools/project.py",
+          "fixed_argv": [],
+          "toolchain": {
+            "repository": "mncs-language",
+            "path": "target/release/mncs"
+          },
+          "toolchain_env": "MNCS_BIN"
+        }
+      },
+      {
+        "contract": "documentation-model",
+        "version": "1",
+        "kind": "semantic-documentation-model",
+        "stability": "experimental",
+        "fingerprint_sources": [
+          "tools/mncs_doc.py",
+          "native/",
+          "tests/test_doc.py",
+          "tests/fixtures/"
+        ]
+      },
+      {
+        "contract": "documentation-validation",
+        "version": "1",
+        "kind": "documentation-validation-report",
+        "stability": "experimental",
+        "fingerprint_sources": [
+          "tools/mncs_doc.py",
+          "tests/test_doc.py"
+        ]
+      },
+      {
+        "contract": "documentation-index",
+        "version": "1",
+        "kind": "semantic-documentation-index",
+        "stability": "experimental",
+        "fingerprint_sources": [
+          "tools/mncs_doc.py",
+          "tests/test_doc.py"
+        ]
+      },
+      {
+        "contract": "semantic-interpretation",
+        "version": "1",
+        "kind": "ephemeral-semantic-project-interpretation",
+        "stability": "experimental",
+        "effects": [
+          "read"
+        ],
+        "fingerprint_sources": [
+          "tools/semantic.py",
+          "native/mncs/doc/state.mncs",
+          "native/mncs/doc/provider.mncs",
+          ".mncs/semantic-artifact.json"
+        ],
+        "invocation": {
+          "kind": "python",
+          "path": "tools/semantic.py",
+          "toolchain": {
+            "repository": "mncs-language",
+            "path": "target/release/mncs"
+          },
+          "toolchain_env": "MNCS_BIN"
+        }
+      }
     ],
     "consumes": [
-      {"contract": "mncs.compiler.declaration-inventory/1", "envelope": {"op": "any"}, "required": true},
-      {"contract": "mncs.compiler.test-inventory/1", "envelope": {"op": "any"}, "required": true},
-      {"contract": "mncs-language.capability-index", "envelope": {"op": "any"}, "required": false},
-      {"contract": "mncs-commons.family-architecture", "envelope": {"op": "any"}, "required": false}
+      {
+        "contract": "mncs.compiler.declaration-inventory/1",
+        "envelope": {
+          "op": "any"
+        },
+        "required": true
+      },
+      {
+        "contract": "mncs.compiler.test-inventory/1",
+        "envelope": {
+          "op": "any"
+        },
+        "required": true
+      },
+      {
+        "contract": "mncs-language.capability-index",
+        "envelope": {
+          "op": "any"
+        },
+        "required": false
+      },
+      {
+        "contract": "mncs-commons.family-architecture",
+        "envelope": {
+          "op": "any"
+        },
+        "required": false
+      }
     ],
     "tests": [
-      {"test": "document-tests", "covers": ["structured-document", "documentation-projection", "documentation-model", "documentation-validation", "documentation-index"], "obligation": "self", "command": {"argv": ["python3", "-m", "unittest", "discover", "-s", "tests"]}}
+      {
+        "test": "document-tests",
+        "covers": [
+          "structured-document",
+          "documentation-projection",
+          "documentation-model",
+          "documentation-validation",
+          "documentation-index"
+        ],
+        "obligation": "self",
+        "command": {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests"
+          ]
+        }
+      }
     ]
   },
   "projections": [
-    {"id": "mncs-doc:rfc-index", "template": "project-rfc-index", "inputs": ["docs/rfcs"], "output": "docs/rfc-index.generated.md", "output_kind": "whole-file", "provider_capability": "mncs-doc:documentation-projection", "render_argv": ["project-rfc-index", "--rfc-root", "{checkout}/docs/rfcs", "--output", "{artifact}/rendered.md", "--link-base", "{checkout}/docs/rfc-index.generated.md"], "policy": "ambient-safe", "verification": {"obligations": ["mncs-doc:verification-executor/mncs-doc.projection-check"]}}
+    {
+      "id": "mncs-doc:rfc-index",
+      "template": "project-rfc-index",
+      "inputs": [
+        "docs/rfcs"
+      ],
+      "output": "docs/rfc-index.generated.md",
+      "output_kind": "whole-file",
+      "provider_capability": "mncs-doc:documentation-projection",
+      "render_argv": [
+        "project-rfc-index",
+        "--rfc-root",
+        "{checkout}/docs/rfcs",
+        "--output",
+        "{artifact}/rendered.md",
+        "--link-base",
+        "{checkout}/docs/rfc-index.generated.md"
+      ],
+      "policy": "ambient-safe",
+      "verification": {
+        "obligations": [
+          "mncs-doc:verification-executor/mncs-doc.projection-check"
+        ]
+      }
+    }
   ],
   "verification": {
-    "obligation_inventory": ".mncs/verification.json"
+    "obligation_inventory": ".mncs/verification.json",
+    "schema_version": "mncs-family.verification-obligation-inventory/v1"
+  },
+  "projection_inventory": ".mncs/projections.json",
+  "structure_profile": {
+    "repository": "machine-native-complexity-development-specification",
+    "path": "profiles/semantic-project.json",
+    "identity": "sha256:259e41ea542e7a1400f1471b0316de4fafc888d6f953c8e91165ff2cfe1e78cb"
   }
 }
