@@ -7,14 +7,17 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 _runtimes = {}
 ROUTES = ('human.repository-overview', 'human.roadmap', 'machine.project-view',
-          'human.structure', 'query.capabilities', 'query.dependencies', 'query.blockers')
+          'human.structure', 'query.capabilities', 'query.dependencies', 'query.blockers',
+          'machine.verbatim-copy')
 
 
 def identity(value):
@@ -75,10 +78,82 @@ def roadmap(values):
     return result, receipts
 
 
-def interpret(model, route):
-    if model.get('schema_version') != 'mncs.semantic-state/1' or route not in ROUTES:
+def _confined_module(renderer_root, relative):
+    """Resolve a renderer module confined to the declaring checkout."""
+    path = Path(relative)
+    if path.is_absolute() or '..' in path.parts or not path.parts:
+        raise ValueError('renderer module escapes checkout')
+    if path.suffix != '.py':
+        raise ValueError('renderer module must be a Python file')
+    root = Path(renderer_root).resolve()
+    result = (Path(renderer_root) / path)
+    if result.is_symlink() or not result.resolve().is_relative_to(root):
+        raise ValueError('renderer module escapes checkout')
+    if not result.is_file():
+        raise ValueError('renderer module not present')
+    return result
+
+
+def delegate(model, route, renderer_root):
+    """Invoke a repo-owned renderer entry with the semantic model.
+
+    The entry module loads confined to the declaring checkout; the
+    checkout root joins module search so the renderer can import its own
+    siblings. The callable receives the full state model and returns
+    content (str or JSON-serializable dict), exactly like a builtin route.
+    """
+    if renderer_root is None:
+        raise ValueError('repo-owned renderer without renderer root')
+    entry = model.get('renderer_entry') or {}
+    module_rel = entry.get('module')
+    name = entry.get('callable')
+    if (not isinstance(module_rel, str) or not module_rel
+            or not isinstance(name, str) or not name.isidentifier()
+            or name.startswith('_')):
+        raise ValueError('malformed renderer entry')
+    path = _confined_module(renderer_root, module_rel)
+    root = str(Path(renderer_root).resolve())
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    spec_name = 'repo_renderer_' + hashlib.sha256(
+        (root + '\0' + module_rel).encode()).hexdigest()[:16]
+    spec = importlib.util.spec_from_file_location(spec_name, path)
+    if spec is None or spec.loader is None:
+        raise ValueError('renderer module not loadable')
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception as error:
+        raise ValueError('renderer module failed: %s: %s'
+                         % (type(error).__name__, error))
+    func = getattr(module, name, None)
+    if not callable(func):
+        raise ValueError('renderer callable not found')
+    try:
+        result = func(model)
+    except Exception as error:
+        raise ValueError('renderer failed: %s: %s'
+                         % (type(error).__name__, error))
+    if not isinstance(result, (str, dict)):
+        raise ValueError('renderer must return content')
+    return result, []
+
+
+def interpret(model, route, renderer_root=None):
+    if model.get('schema_version') != 'mncs.semantic-state/1':
         raise ValueError('unsupported semantic state or interpretation route')
+    if route not in ROUTES:
+        if not isinstance(model.get('renderer_entry'), dict):
+            raise ValueError('unsupported semantic state or interpretation route')
+        return delegate(model, route, renderer_root)
     values = model['values']
+    if route == 'machine.verbatim-copy':
+        if len(values) != 1:
+            raise ValueError('verbatim copy requires exactly one subject')
+        content = next(iter(values.values()))
+        if not isinstance(content, str):
+            raise ValueError('verbatim copy requires a utf-8 subject')
+        return content, []
     if route == 'query.capabilities':
         return values.get('capabilities', []), []
     if route == 'query.dependencies':
@@ -124,13 +199,14 @@ def interpret(model, route):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--state', type=Path, required=True)
-    parser.add_argument('--route', choices=ROUTES, required=True)
+    parser.add_argument('--route', required=True)
+    parser.add_argument('--renderer-root', type=Path, default=None)
     parser.add_argument('--output', type=Path)
     parser.add_argument('--provenance-out', type=Path)
     parser.add_argument('--result-envelope', action='store_true')
     args = parser.parse_args(argv)
     model = json.loads(args.state.read_text())
-    result, receipts = interpret(model, args.route)
+    result, receipts = interpret(model, args.route, args.renderer_root)
     data = (result if isinstance(result, str) else json.dumps(result, sort_keys=True,
                 indent=2, ensure_ascii=False) + '\n').encode()
     if args.result_envelope:
